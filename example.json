@@ -1,0 +1,66 @@
+{
+    "actions": [
+        {
+            "name": "createFile",
+            "action": "createFile",
+            "params": {
+                "file":"sample.txt"
+            },
+            "next": ["fileCreationTime"]
+        },
+        {
+            "name": "fileCreationTime",
+            "action": "getCreationTime",
+            "params": {
+                "file":"sample.txt"
+            },
+            "next": ["creationTimeCondition"]
+        },
+        {
+            "name": "fixedCreationTime",
+            "action": "timeFromString",
+            "params": {
+                "time":"12:30 01.01.2022"
+            },
+            "next": ["creationTimeCondition"]
+        },
+        {
+            "name": "appendTest1",
+            "action": "appendString",
+            "params": {
+                "file": "sample.txt",
+                "text":"!!test1\n"
+            },
+            "next": ["renameFile"]
+        },
+        {
+            "name": "appendTest2",
+            "action": "appendString",
+            "params": {
+                "file": "sample.txt",
+                "text":"##test2\n"
+            },
+            "next": ["renameFile"]
+        },
+        {
+            "name": "renameFile",
+            "action": "renameFile",
+            "params": {
+                "file": "sample.txt",
+                "rename":"new.json"
+            }
+        }
+    ],
+    "conditions": [
+        {
+            "name": "creationTimeCondition",
+            "action": "ifTime",
+            "params": {
+                "first_arg": "fileCreationTime", 
+                "second_arg": "fixedCreationTime",
+                "operator": "<"
+            },
+            "next": ["appendTest1", "appendTest2"]
+        }
+    ]
+}
