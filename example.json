@@ -11,9 +11,7 @@
         {
             "name": "fileCreationTime",
             "action": "getCreationTime",
-            "params": {
-                "file":"sample.txt"
-            },
+            "params": {},
             "next": ["creationTimeCondition"]
         },
         {

@@ -2,7 +2,6 @@ package structs
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/shokHorizon/jsonRunner/comands"
@@ -14,8 +13,8 @@ type Action struct {
 	Params    map[string]string `json:"params"`
 	Result    string            `json:"results"`
 	Next      []string          `json:"next"`
-	PrevNodes []*Action
-	NextNodes []*Action
+	PrevNodes []*Action         `json:"-"`
+	NextNodes []*Action         `json:"-"`
 }
 
 type Config struct {
@@ -23,7 +22,7 @@ type Config struct {
 	Conditions []Action `json:"conditions"`
 }
 
-func (act *Action) Exec(nodes map[string]Action) error {
+func (act *Action) Exec(nodes map[string]*Action) error {
 	params := make(map[string]string)
 	for _, prevNode := range act.PrevNodes {
 		for k, v := range prevNode.Params {
@@ -34,12 +33,13 @@ func (act *Action) Exec(nodes map[string]Action) error {
 		params[k] = v
 	}
 
+	act.Params = params
+
 	var ok bool
 	var err error
 
 	if act.Result != "" {
 		act.Result = ""
-		nodes[act.Name] = *act
 		return nil
 	}
 
@@ -83,7 +83,6 @@ func (act *Action) Exec(nodes map[string]Action) error {
 		if act.Result, err = comands.GetCreationTime(path); err != nil {
 			return err
 		}
-		nodes[act.Name] = *act
 		return nil
 	case "timeFromString":
 		var (
@@ -93,14 +92,13 @@ func (act *Action) Exec(nodes map[string]Action) error {
 			return errors.New("parameter 'time' not found")
 		}
 		act.Result = time
-		nodes[act.Name] = *act
 		return nil
 	case "ifTime":
 		var (
 			firstTime    time.Time
 			secondTime   time.Time
-			firstAction  Action
-			secondAction Action
+			firstAction  *Action
+			secondAction *Action
 			operator     string
 		)
 		if operator, ok = act.Params["operator"]; !ok {
@@ -121,7 +119,6 @@ func (act *Action) Exec(nodes map[string]Action) error {
 			return errors.New("forget about 'second_arg' param")
 		}
 		if firstAction.Result == "" || secondAction.Result == "" {
-			fmt.Println("<>:", firstAction.Result, secondAction.Result)
 			return nil
 		}
 		if firstTime, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", firstAction.Result); err != nil {
@@ -135,14 +132,11 @@ func (act *Action) Exec(nodes map[string]Action) error {
 		}
 		firstAction.Result = ""
 		secondAction.Result = ""
-		nodes[firstAction.Name] = firstAction
-		nodes[secondAction.Name] = secondAction
 		if ok {
 			act.Result = act.Next[0]
 		} else {
 			act.Result = act.Next[1]
 		}
-		nodes[act.Name] = *act
 	}
 	return nil
 }

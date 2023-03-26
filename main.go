@@ -9,29 +9,31 @@ import (
 )
 
 func main() {
-	bytes, err := os.ReadFile("example.json")
-	nodes := make(map[string]structs.Action)
-	conditions := make(map[string]struct{})
-	tasksQueue := make(chan structs.Action, 10)
-	if err != nil {
-		panic("File doesnt exist")
+	if len(os.Args) != 2 {
+		panic("Not enough arguments")
 	}
+	bytes, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	nodes := make(map[string]*structs.Action)
+	conditions := make(map[string]struct{})
+	tasksQueue := make(chan *structs.Action, 10)
 	cfg := structs.Config{}
 	json.Unmarshal(bytes, &cfg)
-	for _, node := range cfg.Actions {
-		nodes[node.Name] = node
+	for i, node := range cfg.Actions {
+		nodes[node.Name] = &cfg.Actions[i]
 	}
 	for _, node := range cfg.Conditions {
-		nodes[node.Name] = node
+		nodes[node.Name] = &node
 		conditions[node.Name] = struct{}{}
 	}
 	for _, node := range nodes {
+		fmt.Println(node.Name)
 		for _, nextNodeName := range node.Next {
 			if nextNode, ok := nodes[nextNodeName]; ok {
-				nextNode.PrevNodes = append(nextNode.PrevNodes, &node)
-				node.NextNodes = append(node.NextNodes, &nextNode)
-				nodes[nextNodeName] = nextNode
-				nodes[node.Name] = node
+				nextNode.PrevNodes = append(nextNode.PrevNodes, node)
+				node.NextNodes = append(node.NextNodes, nextNode)
 			}
 		}
 	}
@@ -46,24 +48,16 @@ func main() {
 	for !done {
 		select {
 		case node := <-tasksQueue:
-			fmt.Println("<: ", node.Name)
 			err := node.Exec(nodes)
-			fmt.Println(">: ", node.Name)
 			if err != nil {
 				panic(err)
 			}
 			if _, ok := conditions[node.Name]; !ok {
-				for _, nextNodeName := range node.Next {
-					if nextNode, ok := nodes[nextNodeName]; ok {
-						fmt.Println("+: ", nextNode.Name)
-						tasksQueue <- nextNode
-					} else {
-						panic("block initialization problem found!")
-					}
+				for _, nextNode := range node.NextNodes {
+					tasksQueue <- nextNode
 				}
 			} else if node.Result != "" {
 				if nextNode, ok := nodes[node.Result]; ok {
-					fmt.Println("+", nextNode)
 					tasksQueue <- nextNode
 				} else {
 					panic("block initialization problem found!")
@@ -73,5 +67,19 @@ func main() {
 			done = !done
 		}
 	}
+	cfgOut := structs.Config{}
+	for _, node := range nodes {
+		if _, ok := conditions[node.Name]; ok {
+			cfgOut.Conditions = append(cfg.Conditions, *node)
+		} else {
+			cfgOut.Actions = append(cfg.Actions, *node)
+		}
+	}
+	logs, err := json.MarshalIndent(cfgOut, "", "    ")
+	if err != nil {
+		panic(err)
+	}
+	os.WriteFile(os.Args[1]+".log", logs, 0777)
+
 	fmt.Println("Queue is empty")
 }
