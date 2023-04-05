@@ -34,15 +34,21 @@ func RenameFile(fileName, rename string) error {
 func GetCreationTime(fileName string) (string, error) {
 	file, err := os.Stat(fileName)
 	if err != nil {
-		return "", errors.New("failed to open a file")
+		return "", err
 	}
 	return file.ModTime().String(), nil
 }
 
 func AppendFile(fileName, text string) error {
-	err := os.WriteFile(fileName, []byte(text), 0)
-	if err != nil {
-		return errors.New("cannot write a file")
+	if err := os.WriteFile(fileName, []byte(text), 0666); err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeleteFile(fileName string) error {
+	if err := os.Remove(fileName); err != nil {
+		return err
 	}
 	return nil
 }

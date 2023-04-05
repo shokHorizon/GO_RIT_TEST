@@ -24,12 +24,11 @@ func main() {
 	for i, node := range cfg.Actions {
 		nodes[node.Name] = &cfg.Actions[i]
 	}
-	for _, node := range cfg.Conditions {
-		nodes[node.Name] = &node
+	for i, node := range cfg.Conditions {
+		nodes[node.Name] = &cfg.Conditions[i]
 		conditions[node.Name] = struct{}{}
 	}
 	for _, node := range nodes {
-		fmt.Println(node.Name)
 		for _, nextNodeName := range node.Next {
 			if nextNode, ok := nodes[nextNodeName]; ok {
 				nextNode.PrevNodes = append(nextNode.PrevNodes, node)
@@ -48,6 +47,9 @@ func main() {
 	for !done {
 		select {
 		case node := <-tasksQueue:
+			if node.Result != "" {
+				continue
+			}
 			err := node.Exec(nodes)
 			if err != nil {
 				panic(err)
@@ -67,15 +69,17 @@ func main() {
 			done = !done
 		}
 	}
-	cfgOut := structs.Config{}
-	for _, node := range nodes {
-		if _, ok := conditions[node.Name]; ok {
-			cfgOut.Conditions = append(cfg.Conditions, *node)
-		} else {
-			cfgOut.Actions = append(cfg.Actions, *node)
+	for i, node := range cfg.Actions {
+		if actualNode, ok := nodes[node.Name]; ok {
+			cfg.Actions[i] = *actualNode
 		}
 	}
-	logs, err := json.MarshalIndent(cfgOut, "", "    ")
+	for i, node := range cfg.Conditions {
+		if actualNode, ok := nodes[node.Name]; ok {
+			cfg.Conditions[i] = *actualNode
+		}
+	}
+	logs, err := json.MarshalIndent(cfg, "", "    ")
 	if err != nil {
 		panic(err)
 	}

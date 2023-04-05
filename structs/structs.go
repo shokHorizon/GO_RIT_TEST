@@ -39,7 +39,6 @@ func (act *Action) Exec(nodes map[string]*Action) error {
 	var err error
 
 	if act.Result != "" {
-		act.Result = ""
 		return nil
 	}
 
@@ -130,8 +129,6 @@ func (act *Action) Exec(nodes map[string]*Action) error {
 		if ok, err = comands.CompareTimes(firstTime, secondTime, operator); err != nil {
 			return err
 		}
-		firstAction.Result = ""
-		secondAction.Result = ""
 		if ok {
 			act.Result = act.Next[0]
 		} else {
